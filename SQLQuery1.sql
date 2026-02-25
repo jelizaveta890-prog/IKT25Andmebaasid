@@ -125,7 +125,7 @@ select * from Person where City != 'Gotham'
 --variant nr 2. kõik, kes ei ela Gothamis
 select * from Person where City <> 'Gotham'
 
---näitab tetud vanusega inimesi 
+--näitab teatud vanusega inimesi 
 --valime 151, 35, 26
 --Versioon 1
 select * from Person Where Age in (151, 35, 26)
@@ -140,7 +140,7 @@ select * from Person where Age >= 22 and  Age <= 41
 
 --Wildcard e näitab kõik g-tähega linnad
 select * from Person Where City like 'G%'
---ótsib emailid @-märgiga
+--otsib emailid @-märgiga
 select * from Person Where Email like '%@%'
 
 --tahan näha, kellel on emailis ees ja peale @-märki üks täht
@@ -173,3 +173,126 @@ select * from Person order by Name
 
 --võtab olm esimest rida Person tabelist
 select top 3 * from Person 
+
+          --Tund nr 3  25.02.2026--
+------------------------------------------------
+
+--kolm esimest, aga tabeli järjestus on Age ja siis Name
+select top 3 Age, Name from Person
+
+--näita esimesed 50% tabelist 
+select top 3 Age, Name from Person
+
+select top 50 PERCENT * from Person
+
+--järjestab vanuse järgi isikud
+
+--muudab Age muutuja int-ks ja näitab vanulises järjestuses 
+--cast abil saab andmetüüpi muuta 
+select * from Person order by cast (Age as int )desc
+
+
+--aga kõikide isikute koondvanus e liidab kõik kokku
+select sum(cast(Age as int))as KoondVanus from Person 
+-- "as KoondVanus" annab nimetuse 
+
+--kõige noorem isik tuleb üles leida
+select min(cast(Age as int)) from Person 
+
+--kõige vanem isik tuleb üles leida
+select max(cast(Age as int)) from Person 
+
+--muudame Age muutuja int peale 
+--näeme konkreetse linnades olevate isikute koondvanust
+select City, sum(Age)as TotalAge from Person group by City
+
+
+--kuidas saab koodiga muuta andmetüüpi ja selle pikkust
+alter table Person
+alter column Name nvarchar(25)
+
+--kuvab esimeses reas välja toodud järjestuses ja kuvab Age-i
+--TotalAge-ks 
+--järjest City-s olevate nimed järgi ja siis Genderid järgi
+--kasutada group by-d ja order gy-d
+select City, GenderId, sum(Age) as TotalAge from Person
+group by City, GenderId
+order by GenderId;
+
+--näitab, et mitu rida andmeid on selles tabelis 
+select count(*) from Person
+--näitab tulemust mitu inimest on Genderid väärtusega 2
+--konkreetses linnas
+--arvutab kokku selles linnas 
+select GenderId, City, sum(Age) as TotalAge, count(Id) as 
+[Total person(s)] from person
+Where GenderId = '2'
+group by GenderId, City
+
+--näitab ära inimeste koondvanuse, mis on üle 41 a ja 
+--kui palju neid igas linnas elab 
+--eristab inimese soo ära
+select GenderId, City, sum(Age) as TotalAge, count(Id) as 
+[Total person(s)] from person
+Where GenderId = '1'
+group by GenderId, City having SUM(Age) > 41
+
+--loome tabelid Employees ja Drpartment
+create table Department 
+(
+Id int primary key, 
+DepartmentName nvarchar(50),
+Location nvarchar(50),
+DepartmentHead nvarchar(50),
+)
+
+create table Employees
+(
+Id int primary key, 
+Name nvarchar(50),
+Gender nvarchar(50),
+Salary nvarchar(50),
+DepartmentId int
+)
+insert into Employees (Id, Name, Gender, Salary, DepartmentId)
+values (1, 'Tom', 'Male',4000, 1),
+(2, 'Pam', 'Female',3000, 3),
+(3, 'John', 'Male', 3500, 1),
+(4, 'Sam', 'Male', 4500, 2),
+(5, 'Todd', 'Male',2800, 2),
+(6, 'Ben', 'Male', 7000, 1),
+(7, 'Sara', 'Female',4800, 3),
+(8, 'Valarie', 'Female', 5500, 1),
+(9, 'James', 'Male',6500, NULL),
+(10, 'Russell', 'Male',8800, NULL)
+
+insert into Department (Id, DepartmentName, Location, DepartmentHead)
+Values(1, 'IT', 'London','Rick'),
+(2, 'Payroll', 'Delhi','Ron'),
+(3, 'HR', 'New York', 'Christie'),
+(4, 'Other Department', 'Syndey', 'Cindrella')
+
+select *from  Department
+select *from  Employees 
+
+---
+
+select Name, Gender, Salary, DepartmentName
+from Employees 
+left join Department
+on Employees.DepartmentId = Department.Id
+---
+
+--arvutab kõikide palgad kokku Emloyees tabelist
+select sum(cast(salary as int))from Employees--arvutab kõikide palgad kokku 
+--kõige väiksem palga saaja 
+select min(cast(salary as int))from Employees
+--näitab veerge Location ja Palka.Palga veerg kuvatakse TotalSalary-ks
+--teha left join Department tabeliga
+--grupitab Locationiga
+select Location,sum(cast(salary as int)) as TotalSalary
+from Employees 
+left join Department
+on Employees.DepartmentId = Department.Id
+group by Location
+
