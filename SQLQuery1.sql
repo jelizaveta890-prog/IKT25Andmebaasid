@@ -768,3 +768,170 @@ print 'Name = ' + @FirstName
 --output tagastab muudetud read kohe päringu tulemusena 
 --see on salvestatud protseduuris ja ühe väärtuse tagastamine
 --out ei anna mitte midagi, kui seda ei määra execute käsus
+
+          --Tund nr 8  19.03.2026--
+------------------------------------------------
+
+sp_help spGetNameById
+
+create proc spGetNameById2
+@Id int 
+--kui on begin, siis on ka end kuskil olemas 
+as begin 
+return (select FirstName From Employees Where Id = @Id)
+end
+
+--tuleb veatedae kuna kutsusime välja int-i, aga Tom on nvarchar
+declare @EmploteeName nvarchar(50)
+execute @EmploteeName = spGetNameById2 1
+print 'Name of the employee = ' + @EmployeeName
+
+--sisseehitatud string funktsioonid 
+--see konverteerib ASCII tähe väärtuse numbriks
+select ASCII('A')
+
+select char(65)
+
+--prindime kogu tähestiku välja 
+declare @Start int
+set @Start = 97
+--ksutate while, et näidata kogu tähestiku ette 
+while (@Start <= 122)
+begin
+select char (@Start)
+set @Start = @Start + 1
+end
+
+--eemaldame tühjad kohad sulgudes
+select ('        Hello')
+select LTRIM('        Hello')
+
+--tühikute eemaldamine veerust, mis on tabelis 
+
+select FirstName, MiddleName, LastName from Employees
+--eemaldage tühikud FirstName veerust ära
+select LTRIM(FirstName) as FirstName, MiddleName, LastName from Employees
+
+--parema poolt tühjad stringid lüikab ära 
+select RTRIM('    Hello     ')
+
+
+--keerab klooni sees olevad andmed vastupidiseks 
+--vastavalt lower-ga ja upper-ga muuta märkide suurust
+--reverse funktsioon pöörab kõik ümber
+select reverse(upper(ltrim(FirstName))) as FirstName, MiddleName, lower(LastName), 
+rtrim(ltrim(FirstName)) + ' ' + MiddleName + ' ' + LastName as FullName
+from Employees
+
+
+--left, right, substring
+--vasakul poolt neli esimest tähte 
+select LEFT('ABCDEF', 4)
+--paremalt poolt kolm tähte
+select right('ABCDEF', 3)
+
+--kuvab @-tähtemärgi asetuste mitmes on @_ märk
+select CHARINDEX('@', 'sara@aaa.com')
+
+--esimene nr pele komakohta näitab et miotmendas alustab ja 
+--siis mitu nr peale seda kuvada 
+select SUBSTRING('pam@bbb.com',5 , 2)
+
+--@-märgist kuvab kolm tähe märki.Viimas numbri saab määrata pikkust
+select SUBSTRING('pam@bb.com', CHARINDEX('@', 'pam@bb.com') + 1, 3)
+
+--pele @- märki hakkab kuvama tulemust, nr saab kaugust seadistada 
+select SUBSTRING('pam@bbb.com', CHARINDEX('@', 'pam@bb.com') + 5,
+LEN('pam@bb.com') - CHARINDEX('@', 'pam@bbb.com'))
+
+alter table Employees 
+add Email nvarchar(20)
+
+select * from Employees
+
+update Employees set Email = 'tom@aaa.com' where Id = 1;
+update Employees set Email = 'pam@bbb.com' where Id = 2;
+update Employees set Email = 'john@aaa.com' where Id = 3;
+update Employees set Email = 'sam@bbb.com' where Id = 4;
+update Employees set Email = 'todd@bbb.com' where Id = 5;
+update Employees set Email = 'ben@ccc.com' where Id = 6;
+update Employees set Email = 'sara@ccc.com' where Id = 7;
+update Employees set Email = 'valarie@aaa.com' where Id = 8;
+update Employees set Email = 'james@bbb.com' where Id = 9;
+update Employees set Email = 'russell@bbb.com' where Id = 10;
+
+--soovime teade saada domeeninimesid emailides
+select SUBSTRING (Email, charindex('@', Email) + 1,
+len(Email) - charindex('@', Email)) as EmailDomain
+from Employees
+
+--alates teisest tähest emailis kuni @ märgini on tärnid
+select FirstName, LastName,
+substring(Email, 1, 2) + replicate('*', 5 ) +
+substring(Email, charindex('@', Email), len(Email) - charindex('@', Email)+1) as Email
+from Employees
+
+--kolm korda näitab stringis olevat väärtust
+select REPLACE('asd', 3)
+
+--tühiku sisestamine
+select space(5)
+
+--tühiku sisestamine Firstname ja LastName vahele
+select FirstName + SPACE(25) + LastName  as FullName
+from Employees
+
+--PATINDEX
+--sama, mis charindex, aga dünaamiliselt kasuta wildcardi
+select Email, PATINDEX('%@aaa.com', Email) as FirstOcurence
+from Employees 
+where PATINDEX('%@aaa.com', Email) > 0
+--leian kõik selle domeeni esindaja alates mitmendas märgist algab @
+
+
+--kõik .com emailid asendab .net-ga
+select Email, REPLACE(Email, '.com', '.net') as ConvertedEmail
+from Employees
+
+
+--soovin asendada peale sesimest märki kolm tähte viie täringa
+select FirstName, LastName, Email,
+ stuff(Email, 2, 3, '*****') as StuffedEmail
+from Employees
+
+create table DateTime 
+(
+c_time time,
+c_date date,
+c_smalldatetime smalldatetime,
+c_datetime datetime,
+c_datetime2 datetime2,
+c_datetimeoffset datetimeoffset, 
+)
+
+select * from DateTime
+
+--konkreetse masina kellaaega 
+select getdate(), 'GETDATE()'
+
+insert into DateTime
+values (getdate(), getdate(), getdate(), getdate(), getdate(), getdate())
+
+select * from DateTime                 
+
+update DateTime set c_datetimeoffset = '2026-03-19 14:25:48.6266667 +10:00'
+where c_datetimeoffset = '2026-03-19 14:25:48.6266667 +00:00'
+
+
+select CURRENT_TIMESTAMP, 'CURRENT_TIMESTAMP'--AJA PÄRING
+select SYSDATETIME(), 'SYSDATETIME'--veel täpsem aja päring
+select SYSDATETIMEOFFSET(), 'SYSDATETIMEOFFSET'--täpne aeg koos ajalise nihkega 
+select GETUTCDATE(), 'GETUTCDATE'--UCT aeg
+
+--saab kontrollida, kas on õige andmetüüp
+select isdate('asd')--tagastab 0 kuna string ei ole date
+select isdate(getdate()) --kuidas saada vastuseks 1 isdate puhul?
+select  isdate('2026-03-19 14:25:48.6266667')--tagastab 0 kuna max kolm komakohta võib olla 
+select  isdate('2026-03-19 14:25:48.626')--tagastab 1
+select DAY(getdate())--annab tänas epäeva nr
+select DAY('01/24/2026')--annab stringis oleva kp ja järjestus ja olema õige
