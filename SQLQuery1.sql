@@ -935,3 +935,122 @@ select  isdate('2026-03-19 14:25:48.6266667')--tagastab 0 kuna max kolm komakoht
 select  isdate('2026-03-19 14:25:48.626')--tagastab 1
 select DAY(getdate())--annab tänas epäeva nr
 select DAY('01/24/2026')--annab stringis oleva kp ja järjestus ja olema õige
+select MONTH(GETDATE()) --annab tänase kuu nr
+select MONTH('01/24/2026')--annab stringis oleva kuu ja järjestus peab olema õige
+select year(GETDATE()) --annab tänase aasta nr
+select year('01/24/2026')--annab stringis oleva aasta ja järjestus peab olema õige
+
+select DATENAME(DAY, '2026-03-19 14:26:02.983') --annab stringis oleva päeva nr
+select DATENAME(Month, '2026-03-19 14:26:02.983') --annab stringis oleva kuu nr
+select DATENAME(WEEKDAY, '2026-03-19 14:26:02.983') --annab stringis oleva nädala nr
+
+create table EmployeeWithDates
+(
+Id nvarchar(2),
+Name nvarchar(20),
+DateOfBirth datetime
+)
+
+insert into EmployeeWithDates (Id, Name,DateOfBirth)
+values (1, 'Sam', '1999-01-10 15:56:02.983');
+insert into EmployeeWithDates (Id, Name,DateOfBirth)
+values (2, 'Ken', '2000-02-21 10:16:02.983');
+insert into EmployeeWithDates (Id, Name,DateOfBirth)
+values (3, 'Andrew', '2010-01-26 02:26:02.983');
+insert into EmployeeWithDates (Id, Name,DateOfBirth)
+values (4, 'Katy', '2007-08-20 09:35:02.983')
+
+select * from EmployeeWithDates
+
+          --Tund nr 9  24.03.2026--
+------------------------------------------------
+
+--kuidas võtta ühest veerust andmeid ja selle abil luua uued veerud 
+
+--vaatab DoB veerust päeva ja kuvab päeva nimetuse sõnana
+select Name, DateOfBirth, Datename(weekday, DateOfBirth) as [Day], 
+ --vaatab VoB veerust kuupäevasi ja kuvab kuu nr
+ Month(DateOfBirth) as MonthNumber,
+ --vaatab DoB veerust kuud ja kuvab sõnana
+ DateName(Month, DateOfBirth) as [MonthName],
+ --võtab DoB veerust aasta
+ Year(DateOfBirth) as [Year]
+ from EmployeeWithDates
+
+ --kuvab 3 kuna USA nädal algab pühapäevaga 
+ select Datepart(weekday, '2026-03-24 09:35:02.983')
+ --tehke sama aga, kasutame kuu-d
+ select Datepart(month, '2026-03-24 09:35:02.983')
+ --liidab stringis oleva kp 20 päeva juurde
+ select Dateadd(day, 20, '2026-03-24 09:35:02.983')
+ --lahutab 20 päeva maha 
+ select Dateadd(day, -20, '2026-03-24 09:35:02.983')
+ --kuvab kahe stringis oleva kuudevahelist aega nr-na
+ select datediff(month, '11/20/2026', '01/20/2024')
+ --tehke sama, aga kasutage aastat
+ select datediff(year, '11/20/2026', '01/20/2028')
+
+ --alguse uurigte, mis on funktsioon MS SQL 
+ --eelkirjutatud toimingud,salvestatud tegevus,andmebaasis salvestatud alamprogramm.
+
+ --miks seda on vaja 
+ --pakkuda DB-s korduvkasutatud funktsionaalsus, korduvate arvutuste lihtsustamiseks.
+ 
+ --mis on selle eelised ja puudused
+--saada kiiresti kasutada toiminguid ja ei pea uuesti koodi kirjutama 
+--Funktsioonid ei tohi muuta andmebaasi olekut
+
+create function fnComputeAge(@DOB datetime)
+returns nvarchar(50)
+as begin
+    declare @tempdate datetime, @years int, @months int, @days int
+    select @tempdate = @DOB
+
+    select @years = datediff(year, @tempdate, getdate()) - case when (month(@DOB) >
+    month(getdate())) or (month(@DOB) = month(getdate()) and day (@DOB) > day(getdate()))
+    then 1 else 0 end
+    select @tempdate = dateadd(year, @Years, @tempdate) 
+
+	select @months  = datediff(month, @tempdate, getdate()) - case when day(@DOB) > day(getdate()) 
+	then 1 else 0 end
+	select @tempdate = dateadd(month, @months, @tempdate)
+
+	select @days = datediff(day, @tempdate, getdate())
+
+	declare @Age nvarchar(50)
+	       set @Age = cast(@years as nvarchar(4)) + ' Years ' + cast(@months as nvarchar(2))
+	       + ' Months ' + cast(@days as nvarchar(2)) + ' Days old '
+		   return @Age
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
