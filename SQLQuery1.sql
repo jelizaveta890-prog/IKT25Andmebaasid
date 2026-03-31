@@ -1004,24 +1004,64 @@ create function fnComputeAge(@DOB datetime)
 returns nvarchar(50)
 as begin
     declare @tempdate datetime, @years int, @months int, @days int
-    select @tempdate = @DOB
+select @tempdate = @DOB
 
-    select @years = datediff(year, @tempdate, getdate()) - case when (month(@DOB) >
-    month(getdate())) or (month(@DOB) = month(getdate()) and day (@DOB) > day(getdate()))
-    then 1 else 0 end
-    select @tempdate = dateadd(year, @Years, @tempdate) 
+select @years = DATEDIFF(YEAR, @tempdate, GETDATE()) - case when (month(@DOB)>
+MONTH(GETDATE())) or (MONTH(@DOB) = MONTH(GETDATE())and day(@DOB) > DAY(GETDATE()))
+then 1 else 0 end
+select @tempdate = DATEADD(YEAR, @years, @tempdate)
 
-	select @months  = datediff(month, @tempdate, getdate()) - case when day(@DOB) > day(getdate()) 
-	then 1 else 0 end
-	select @tempdate = dateadd(month, @months, @tempdate)
+select @months = DATEDIFF(MONTH, @tempdate, GETDATE()) - case when DAY(@DOB) >
+DAY(getdate()) then 1 else 0 end
+select @tempdate = DATEADD(MONTH, @months, @tempdate)
 
-	select @days = datediff(day, @tempdate, getdate())
+select @days = datediff(day, @tempdate, GETDATE())
 
-	declare @Age nvarchar(50)
-	       set @Age = cast(@years as nvarchar(4)) + ' Years ' + cast(@months as nvarchar(2))
-	       + ' Months ' + cast(@days as nvarchar(2)) + ' Days old '
-		   return @Age
+declare @Age nvarchar(50)
+   set @Age = CAST (@years as nvarchar(4)) + 'Years' + CAST(@months as nvarchar(2))
++ 'Months' + CAST (@days as nvarchar(2)) + 'Days old'
+    return @Age
 end
+
+select Id, Name, DateOfBirth, dbo.fnComputeAge(DateOfBirth)
+as Age from EmployeeWithDates  
+
+		  --Tund nr 10  31.03.2026--
+------------------------------------------------
+--kui kasutame seda funktsiooni, siis saame teada tänase päeva vahet stringis välja tooduga
+select dbo.fnComputeAge('02/24/2010') as age
+
+--nn peale DOB muutuja näitab, et mismoodi kuvada DOB-d
+select Id, Name, DateOfBirth,
+convert(nvarchar, DateOfBirth, 108) as ConvertedDOB
+from EmployeeWithDates  
+
+select Id, Name, Name + ' - ' + cast(Id as nvarchar) as [Name-Id] from EmployeeWithDates  
+
+select cast(getdate() as date) --tänane kuupäev
+
+--tänane kuupäev, aga kasutate convert-i, et kuvada stringina 
+select convert(date, getdate()) as TänaneKuupäev
+
+--matemaatilised funktsioonid
+select ABS(-5) --abs on absoluutväärtusega number ja tulemuseks saame ilma miinus märgita 5
+select ceiling(4.2)--ceiling on funktsioon, mis ümmardab ülespoole ja tulemuseks saame 5
+select ceiling(-4.2)--ceiling ümmardab ka miinus numbri ülespoole, mis tähendab, et saame -4 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
