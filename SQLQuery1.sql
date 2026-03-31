@@ -1104,7 +1104,8 @@ exec dbo.CalculateAge '1980-12-30'
 
 --arvutab välja, kui vana on isik ja võtab arvesse kuud ning päevad
 --antud juhul näitab kõike, kes on üle 36 a vanad
-
+select Id, Name, dbo.CalculateAge(DateOfBirth) as Age from EmployeeWithDates
+where dbo.CalculateAge(DateOfBirth) < 36
 
 
 
