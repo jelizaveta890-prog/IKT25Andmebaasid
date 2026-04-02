@@ -1107,7 +1107,84 @@ exec dbo.CalculateAge '1980-12-30'
 select Id, Name, dbo.CalculateAge(DateOfBirth) as Age from EmployeeWithDates
 where dbo.CalculateAge(DateOfBirth) < 36
 
+		  --Tund nr 11  02.04.2026--
+------------------------------------------------
 
+--- inline table valued function
+alter table EmployeeWithDates
+add DepartmentId int 
+alter table EmployeeWithDates
+add Gender nvarchar(10)
+
+select * from EmployeeWithDates
+
+update EmployeeWithDates set Gender = 'Male', DepartmentId = 1
+where Id = 1
+update EmployeeWithDates set Gender = 'Female', DepartmentId = 2
+where Id = 2
+update EmployeeWithDates set Gender = 'Male', DepartmentId = 3
+where Id = 3
+update EmployeeWithDates set Gender = 'Female', DepartmentId = 1
+where Id = 4
+insert into EmployeeWithDates  (Id, Name, DateOfBirth, DepartmentId, Gender)
+values (5, 'Todd', '1978-08-20 09:35:02.983', 1, 'Male')
+
+--scalar function annab mingis vahemikus andmeid,
+--inline table values ei kasuta begin ja end funktsioone
+--scalar annab väärtused ja inline annab tabeli
+create function fn_EmployeeByGender(@Gender nvarchar(10))
+returns table 
+as 
+return (select Id ,Name, DateOfBirth, DepartmentId, Gender
+        From EmployeeWithDates
+		where Gender = @Gender)
+
+--kuidas leida kõik naised tabelis EmployeeWithDates
+-- ja kasutada funktsiooni fn_EmployeeByGender
+
+select * from fn_EmployeeByGender('Female')
+
+--tahaks ainult Pami nime näha
+select * from fn_EmployeeByGender('Female') 
+where Name = 'Pam'
+
+select * from Department
+
+--kahest erinevates tabelis andmete võtmine ja 
+--koos kuvamine 
+--esimene on funktsioon ja teine tabel
+
+select Name, Gender, DepartmentName
+from fn_EmployeeByGender('Male') E
+join Department D on D.Id = E.DepartmentId
+
+--multi tabel statement 
+--inline funktsioon
+create function fn_GetEmployees()
+returns table as 
+return(select Id, Name, cast(DateOfBirth as date)
+       as DOB 
+       from EmployeeWithDates)
+
+select * from fn_GetEmployees()
+
+--multi - state puhul peab defineerima uue tabeli veerud koos muutujatega
+--funktsiooni nimi on fn_MS_GetEmployees()
+--peab edastama meile Id, Name, DOB tabelis EmployeeWithDates
+
+create function fn_MS_GetEmployees()
+returns @Table Table (Id int, Name nvarchar(20), DOB date)
+as begin
+    insert into @Table
+    select Id, Name, cast(DateOfBirth as date) from EmployeeWithDates
+    return
+end
+select * from fn_MS_GetEmployees()
+
+--inline tabeli funktsioonid on paremini täätamas kuna käsitletakse vaatena
+--multi puhul on pm tegemist stored proceduriga ja kulutab ressurssi rohkem
+
+--muudame andmeid ja vaatame, kas  iline funktsiooni on muutused kajastatud
 
 
 
