@@ -326,7 +326,7 @@ count (Id) as [Total Employee(s)]
 from Employees
 group by Gender, City 
 
---kuvab ka snaised või mehed linnade kaupa 
+--kuvab kas naised või mehed linnade kaupa 
 --kasutage where
 select City, Gender, sum(cast(Salary as int)) as TotalSalary,
 count (Id) as [Total Employee(s)]
@@ -1185,6 +1185,355 @@ select * from fn_MS_GetEmployees()
 --multi puhul on pm tegemist stored proceduriga ja kulutab ressurssi rohkem
 
 --muudame andmeid ja vaatame, kas  iline funktsiooni on muutused kajastatud
+update fn_GetEmployees() set Name = 'Sam1' where Id = 1
+select *from fn_GetEmployees() -- saab muuta andmeid
+
+update fn_MS_GetEmployees() set Name = 'Sam2' where Id = 1
+--ei saa muuta andmeid multi state funktsioonis,
+--kuna see on nagu stored procedure
+
+--deterministic vs non-deterministic functions
+--deterministic funktsioonid annavad erineva tulemuse, kui sissend on sama
+select COUNT(*) from EmployeeWithDates
+select SQUARE(4)
+--non-deterministic funktsioonid annavad erineva tulemuse, kui sisend on sama
+select GETDATE()
+select CURRENT_TIMESTAMP
+select RAND()
+
+		  --Tund nr 12  16.04.2026--
+------------------------------------------------
+
+--loome funktsiooni 
+create function fn_GetNameById(@id int)
+returns nvarchar(30)
+as begin
+   return (select Name from EmployeeWithDates where Id = @id)
+end
+
+--kasutame funktsiooni, leides Id 1 all oleva inimene 
+select dbo.fn_GetNameById(1)
+
+select * from EmployeeWithDates
+
+--saab näha funksiooni sisu
+sp_helptext fn_GetNameById
+
+--nüüd muudame funksiooni nimega fn_GetNameById
+--ja panete sinna encryption, et keegi peale teie ei saaks sisu näha 
+
+alter function fn_GetNameById(@id int)
+returns nvarchar(30)
+with encryption 
+as begin
+    return (select Name from EmployeeWithDates where Id = @id)
+end
+
+--kui nüüd sp_helptext kasutada, siis ei näe funktsiooni sisu
+sp_helptext fn_GetNameById
+
+--kasutame schemabindingut, et nüha, mis on funktsiooni sisu
+alter function dbo.fn_GetNameById(@id int)
+returns nvarchar(30)
+with schemabinding 
+as begin
+    return (select Name from dbo.EmployeeWithDates where Id = @id)
+end
+--schemabinding tähendab, et kui keegi üritab muuta EmployeeWithDates
+--tabelit, siis ei lase seda teha, kuna see on seotud
+--fn_GetNameById funktsiooniga
+
+--ei saa kustutada EmployeeWithDates, 
+--kuna see on seotud fn_GetNameById funktsiooniga
+drop table dbo.EmployeeWithDates
+
+--temporary tables
+--see on olemas ainult selle sessiooni jooksul
+--kasutakse # sübmbolit, et saada aru, et tegemist on temporary tabeliga
+ create table #PersonDetails (Id int,Name nvarchar(20))
+
+ insert into #PersonDetails values (1, 'Sam')
+ insert into #PersonDetails values (2, 'Pam')
+ insert into #PersonDetails values (3, 'John')
+
+ select * from #PersonDetails
+
+--temporary tabelite nimekirja ei näe, kui kasutada sysobjects 
+--tabelit, kuna need on ajutised
+ select Name from sysobjects
+ where name like '#PersonDetails'
+
+--kutsume temporary tabeli
+drop table #PersonDetails
+--loome sp, mis loob temporary tabeli ja paneb sinna andmed
+create proc spCreateLocalTempTable 
+as begin 
+create table #PersonDetails (Id int, Name nvarchar(20))
+
+ insert into #PersonDetails values (1, 'Sam')
+ insert into #PersonDetails values (2, 'Pam')
+ insert into #PersonDetails values (3, 'John')
+
+ select * from  #PersonDetails 
+ end
+ ---
+ exec spCreateLocalTempTable
+
+--globaalne temp tabel on olemas kogu 
+--serveri ja kõikide kasutajatele, kes on ühendatud
+create table ##GlobalPersonDetails (Id int, Name nvarchar(20))
+
+--index
+create table EmployeeWithSalary
+(
+  Id int Primary key,
+  Name nvarchar(20),
+  Salary int, 
+  Gender nvarchar(10)
+)
+
+ insert into EmployeeWithSalary values (1, 'Sam', 2500, 'Male')
+ insert into EmployeeWithSalary values (2, 'Pam', 6500, 'Female')
+ insert into EmployeeWithSalary values (3, 'John', 4500, 'Male')
+ insert into EmployeeWithSalary values (4, 'Sara', 5500,'Female')
+ insert into EmployeeWithSalary values (5, 'Todd', 3100, 'Male')
+  
+ select * from EmployeeWithSalary
+
+--otsime inimesi, kellel palgavahemik on 5000 kuni 7000
+
+select * from EmployeeWithSalary where salary between 5000 and 7000 
+
+--loome indeksi Salary veerule, et kiirendada otsingut
+--mis asetab andmed Salary veeru järgi järjestatult
+create index IX_EmployeeSalary 
+on EmployeeWithSalary(Salary asc)
+
+--saame teada, et mis on selle tabeli primaarvätti ja index 
+exec.sys.sp_helpindex @objname = 'EmployeeWithSalary'
+
+--tahaks IX_EmployeeeSalary indeksi kasutada, et otsing oleks kiirem
+select * from EmployeeWithSalary
+where Salary between 5000 and 7000
+
+select * from EmployeeWithSalary with (index(IX_EmployeeSalary))
+
+--indeksi kustutamine 
+drop index IX_EmployeeSalary on EmployeeWithSalary --1 variant
+drop index EmployeeWithSalary.IX_EmployeeSalary --2 variant
+
+----indexi tüübid:
+--1. Klasitrites olevad
+--2. Mitte-klastis olevad
+--3. Unikaalsed
+--4. Filtreeritud
+--5. XML
+--6. Täistekst
+--7. Ruumline
+--8. Veerusälitav
+--9. Veergude indexid
+--10. Välja arvatud veergudega indeksid
+
+--klastid olev index määrab ära tabelis oleva füüsilise järjestuse
+--ja selle tulemusel saab tabelis olla ainult üks klastist olev index
+
+create table EmployeeCity
+(
+  Id int Primary key,
+  Name nvarchar(20),
+  Salary int, 
+  Gender nvarchar(10),
+  City nvarchar(50)
+)
+
+exec sp_helpindex EmployeeCity
+
+--andemte õige järjestus loovad klastris olevad indeksid 
+--ja kasutab selleks Id nr_t
+--põhjus, miks antud juhul kasutab Id-d, tuleneb primaarvõtmes
+
+ insert into EmployeeCity values (3, 'John', 4500, 'Male', 'New York')
+ insert into EmployeeCity values (1, 'Sam', 2500, 'Female', 'London')
+ insert into EmployeeCity values (4, 'Sara', 5500, 'Male', 'Tokyo')
+ insert into EmployeeCity values (5, 'Todd', 3100,'Female', 'Toronto')
+ insert into EmployeeCity values (2, 'Pam', 6500, 'Male', 'Sydney')
+
+ --Klastris olevad indeksid dikteerivad säilitatud andmete järjestuse tabelis 
+ --ja seda klastrite puhul olla ainult üks 
+
+ select * from EmployeeCity
+ create clustered index IX_EmployeeCityName
+ on EmployeeCity(Name)
+ --põhjus , miks ei saa luua klastist olevat
+ --indexid Name veerule, on seed, et tabelis on juba klastis
+ --olev index Id veerul, kuna see on primarvõti
+
+ --loome composite indeksi, mis tähendab, et see on mitme veeru indeks
+ --enne tuleb kustutada klastris olev indeks, kuna composite indeks 
+ --on klastris olev indeksi tüüp
+ cerate clustered index IX_EmployeeGenderSalary
+ on EmployeeCity(Gender desc, Salary asc)
+ --kui teed select päringu selle tabelile, siis peaksid nägema andmeid,
+ --mis on järjestatud selliseset: Esimeseks võetakse aluseks Gender veerg
+ --kahenevas järjestuses ja siis Salary veerg tõusvas järjestuses
+
+ select * from EmployeeCity
+
+ --mitte klastris olev indeks on eraldi struktuur, 
+--mis hoiab indeksi veeru väärtusi
+create nonclustered  index IX_EmployeeCityName
+on EmployeeCity(Name)
+--kui nüüd teed select päringu, siis näed, et andmed on
+--järjestatud Id veeru järgi
+select * from EmployeeCity
+
+--erinevused kahe indeksi vahel 
+--1.ainult üks klastris olev indeks saab olla tabeli peale,
+--mitte-klastris olevaid indekseid saab olla mitu 
+--2. klastris olevad indeksid on kiiremad kuna indeksid peab tagasi
+--viitama tabeli juhul, kui selekteeritud veerg ei ole olemas indeksis
+--3. Klastris oleva indeksi määratleb ära tabeli ridade salvestusejärjestuse
+--ja ei nõua kettal lisa ruumi.Samas mitte klastris olevad indeksi on
+--salvestatud tabelist eraldi ja nõuab lisa ruumi
+
+create table EmployeeFirstName
+(
+  Id int Primary key,
+  FirstName nvarchar(20),
+  LastName nvarchar(20),
+  Salary int, 
+  Gender nvarchar(10),
+  City nvarchar(50)
+)
+
+exec sp_helpIndex EmployeeFirstName
+
+insert into EmployeeFirstName values(1, 'John', 'Smith', 4500, 'Male', 'New York')
+insert into EmployeeFirstName values(1, 'Mike', 'Sandoz', 2500, 'Male', 'London')
+
+drop index EmployeeFirstName.PK__Employee__3214EC07BBE6F4EC
+--kui käivitada ülevalpool oleva koodi, siis tuleb veateade 
+--et SQL server kasutab UNIQUE Indeksit jõustamaks väärtuse 
+--unikaalsust ja primaarvõtit koodiga Unikaalseid Indekseid
+--ei saa kustudada, aga käsitsi saab
+
+create unique nonclustered  index UIX_Employee_FirstName_LastName
+on EmployeeFirstName(FirstName, LastName)
+
+--lisame uue piirangu peale 
+alter table EmployeeFirstName
+add constraint UQ_EmployeeFirstNameCity
+unique nonclustered (City)
+
+--sisestage kolmas rida andmetega, mis on id-s 3, FirstName-s John,
+--LastName-s Menco ja linn on London
+
+insert into EmployeeFirstName values(3, 'John', 'Menco', 3500, 'Male', 'London')
+
+--saab vaadata indeksite infot 
+exec sp_helpconstraint EmployeeFirstName
+
+-- 1. Vaikimisi primaarvõti loob unikaalse klastris oleva indeksi,
+-- samas unikaalne piirang loob unikaalse mitte-klastris oleva indeksi
+-- 2. Unikaalset indeksit või piirangut ei saa luua olemasolevasse tabelis
+-- kui tabel juba sisaldab väärtusi võtmeveerus
+-- 3. Vaikimisi korduvaid väärtuseid ei ole veerus lubatud,
+-- kui peaks olema unikaalne indeks või piirang. Nt, kui tahad sisestada
+-- 10 rida andmeid, millest 5 sisaldavad korduvaid andmeid,
+-- siis kõik 10 lükatakse tagasi. Kui soovin ainult 5
+-- rea tagasilükkamist ja ülejäänud 5 rea sisestamist, siis selleks
+-- kasutatakse IGNORE_DUP_KEY
+
+--näide 
+create unique index IX_EmployeeFirstName
+on EmployeeFirstName(City)
+with IGNORE_DUP_KEY
+
+insert into EmployeeFirstName values(5,'John', 'Menco', 3512, 'Male', 'London1')
+insert into EmployeeFirstName values(6'John', 'Menco', 3123, 'Male', 'London2')
+insert into EmployeeFirstName values(6,'John', 'Menco', 3220, 'Male', 'London2')
+--enne ignore käsku oleks kolm rida tagasi lükatud, aga 
+--nüüd keskmine rida läbi kuna linna nimi oli unikaalne
+select * from EmployeeFirstName
+
+--view on virtuaalne tabel, mis on loodud ühe või mitme tabeli põhjal
+select Firstname, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Department.Id = Employees.DepartmentId
+
+create view vw_EmployeeByDetails
+as
+select Firstname, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Department.Id = Employees.DepartmentId
+--otsige ülesse view
+
+--kuidas view-d kasutada: vw_EmployeeByDetails
+select * from vw_EmployeeByDetails
+-- view ei salvesta andmeid vaikimisi
+-- seda tasub vötta, kui salvestatud virtuaalse tabelina
+
+-- milleks vaja:
+-- saab kasutada andmebaasi skeemi keerukuse lihtsutamiseks,
+-- mitte IT-inimesele
+-- piiratud ligipääs andmetele, ei näe kõiki veerge
+
+--teeme view, kus näeb ainult IT-töötajad
+create  view vITEmployeesInDepartment
+as 
+select Firstname, Salary, Gender, DepartmentName
+from Employees
+join Department
+on Department.Id = Employees.DepartmentId
+where Department.DepartmentName = 'IT'
+--Ülevalpool olevat päringut saab liigitada reataseme turvalisuse 
+--alla. Tahan ainult IT osakonna töötajaid
+
+select * from vITEmployeesInDepartment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
