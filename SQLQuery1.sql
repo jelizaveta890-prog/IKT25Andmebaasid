@@ -1493,6 +1493,320 @@ where Department.DepartmentName = 'IT'
 
 select * from vITEmployeesInDepartment
 
+		  --Tund nr 13  24.04.2026--
+------------------------------------------------
+--veeru taseme turvalisus 
+--peale selecti määratled veergude näitamise ära
+create view vEmployeeInDepartmentSalaryNoShow
+as
+select FirstName, Gender, DepartmentName
+from Employees
+join Department
+on Employees.DepartmentId = Department.Id
+
+select * from vEmployeeInDepartmentSalaryNoShow
+
+--saab kasutada esitlemaks koondandmeid ja üksikasjalike andmeid 
+--view, mis tagastab summereid andmeid
+create view vEmployeeCountDepartment
+as 
+select DepartmentName, count(Employees.Id) as TotalEmployees
+From Employees
+join Department
+on Employees.DepartmentId = Department.Id
+group by DepartmentName
+
+select * from vEmployeeCountDepartment
+
+--kui soovid vaadata view sisu?
+sp_helptext vEmployeeCountDepartment
+--kui soovid muuta, siis kasutad alter view
+
+--kui soovid kustutada, siis kasutada drop view
+drop view vEmployeeCountDepartment
+
+--andmete uuendamine läbi view 
+create view vEmployeeDataExceptSalary
+as 
+select Id, FirstName, Gender, DepartmentId
+from Employees
+
+select * from Employees
+
+update vEmployeeDataExceptSalary
+set [FirstName] = 'Pam' where Id = 2
+
+--kustutage Id 2 rida ära 
+delete from vEmployeeDataExceptSalary where Id = 2
+--Andemete sisestamine läbi view: vEmployeeDataExceptSalary
+--Id 2, Female, 2, Pam
+insert into vEmployeeDataExceptSalary (Id, Gender, DepartmentId, FirstName)
+values (2, 'Female', 2, 'Pam')
+
+--indekseeritud view
+--mS SQL-s on indekseeritud view nime all ja 
+--Oracles mateljaliseeritud view nimega
+
+create table product 
+(
+Id int primary key,
+Name Nvarchar(20),
+UnitPrice int
+)
+
+select * from Product
+
+insert into product (Id, Name, UnitPrice)
+ values(1, 'Books', 20),
+ (2, 'Pens', 14),
+ (3, 'Pencils', 11),
+ (4, 'Clips', 10)
+
+create table ProductSales 
+(
+Id int,
+QuantitySold int
+)
+
+select * from ProductSales 
+
+insert into ProductSales  (Id, QuantitySold)
+ values(1,10),
+ (3, 23),
+ (4, 21),
+ (2, 12),
+ (1, 13),
+ (3, 12),
+ (4, 13),
+ (1, 11),
+ (2, 12),
+ (1, 14)
+
+ --loomeview, mis annab meile veerud TotalSales ja TotalTransction
+
+ alter view vTotalSalesByProduct
+ with schemabinding
+ as 
+ select Name,
+ sum(isnull((QuantitySold * UnitPrice), 0)) as TotalSales,
+ count_big(*) as TotalTransactions
+ from dbo.ProductSales
+ join dbo.Product
+ on dbo.Product.Id = dbo.ProductSales.Id
+ group by Name 
+
+select * from vTotalSalesByProduct
+
+-- kui soovid luua indeksi view sisse, siis peab järgima teatud reegleid
+-- 1. view tuleb luua koos schemabinding-ga
+-- 2. kui lisafunktsioon select list viitab väljendile ja selle tulemuseks
+-- vöib olla NULL, siis asendusväärtus peaks olema täpsustatud.
+-- Antud juhul kasutasime ISNULL funktsiooni asendamaks NULL väärtust
+-- 3. kui GroupBy on täpsustatud, siis view select list peab
+-- sisaldama COUNT_BIG(*) väljendit
+-- 4. Baastabelis peaksid view-d olema viidatud kahesosalie nimega
+-- ehk antud juhul dbo.Product ja dbo.ProductSales.
+
+create unique clustered index UIX_vTotalSalesByProduct_Name
+on vTotalSalesByProduct(Name)
+
+select * from vTotalSalesByProduct
+
+--veiw piirangud 
+create view vEmployeeDetails
+@Gender nvarchar(20)
+as 
+Select Id, FirstName, Gender, DepartmentId
+from Employees 
+
+--mis on selles views valesti?
+--vaatasse e view-sse ei saa kaasa panna parameetreid e antud juhul Gender
+
+--teha funktsioon kus parameetriks on gender 
+--soovin näha veerge: Id, FirstName, Gender, DepartmentId
+--tabeli nimi on Employees
+--funktsiooni nimi on fnEmployeeDetails 
+
+create function fnEmployeeDetails (@Gender nvarchar(20))
+returns table
+as
+return
+(select Id, FirstName, Gender, DepartmentId
+from Employees where Gender = @Gender)
+
+--kasutame funktsiooni fnEmployeeDetails koos parameetriga 
+
+select * from fnEmployeeDetails('Female')
+
+--orde by kasutamine 
+create view vEmployeeDetailsStored
+as
+select Id, FirstName, Gender, DepartmentId
+from Employees
+order by Id 
+--order by-d ei saa kasutada 
+
+--temp tabeli kasutamine 
+create table ##TestTempTable
+(Id int, FirstName nvarchar(20), Gender nvarchar(20))
+
+insert into ##TestTempTable values (101, 'Mart', 'Male')
+insert into ##TestTempTable values (102, 'Joe', 'Female')
+insert into ##TestTempTable values (103, 'Pam', 'Female')
+insert into ##TestTempTable values (104, 'James', 'Male')
+
+--veiw nimi on vOnTempTable
+--kasutame ##TestTempTable
+create view vOnTempTable
+as
+select Id, FirstName, Gender
+from ##TestTempTable
+--view-id ja funktsiooni ei saa teha ajutistele tabelitele
+
+--Triggerid
+
+--DML trigger
+--kokku on kolem tüüpi:  DML, DDL ja LONGON
+
+--- trigger on stored procedure eriliik, mis automaatselt käivitub,
+--- kui mingi tegevus
+--- peaks andmebaasis aset leidma
+
+--- DML – data manipulation language
+--- DML-i põhilised käsklused: insert, update ja delete
+
+-- DML triggereid saab klassifitseerida kahte tüüpi:
+-- 1. After trigger (kutsutakse ka FOR triggeriks)
+-- 2. Instead of trigger (selmet trigger e selle asemel trigger)
+
+--- after trigger käivitub peale sündmust, kui kuskil on tehtud insert,
+--- update ja delete
+
+
+--Loome uue tabeli
+create table EmployeeAudit
+(
+Id int identity(1, 1) primary key,
+AudiData nvarchar(1000)
+)
+
+-- peale iga töötaja sisestamist tahame teada saada töötaja Id-d, 
+-- päeva ning aega (millal sisestati) 
+-- kõik andmed tulevad EmployeeAudit tabelisse 
+-- andmeid sisestame Employees tabelisse
+
+create trigger trEmployeeForInsert
+on Employees
+for insert
+as begin 
+declare  @Id int
+select @Id = Id from inserted
+insert into EmployeeAudit
+values ('New employee with Id = ' + cast(@Id as nvarchar(5)) + ' is added at '
++ cast(getdate() as nvarchar(20)))
+end
+
+select * from Employees
+
+insert into Employees values 
+(11, 'Bob', 'Blob', 'Bomb', 'Male', 3000, 1, 3, 'bob@bob.com')
+go 
+select * from EmployeeAudit 
+
+
+
+--delete trigger
+create trigger trEmployeeForDelete
+on Employees
+for delete
+as begin 
+    declare @Id int
+    select @Id = Id from deleted
+
+    insert into EmployeeAudit
+    values ('An existing employee with Id = ' + cast(@Id as nvarchar(5)) +
+    ' is deleted at ' + cast(getdate() as nvarchar(20)))
+    end
+
+delete from Employees where Id = 11
+select * from EmployeeAudit
+
+--update trigger 
+create trigger trEmployeeForUpdate
+on Employees
+for update 
+as begin 
+   --muutujate deklareerimine
+   declare @Id int
+   declare @OldGender nvarchar(20), @NewGender nvarchar(20)
+   declare @OldSalary int, @NewSalary int
+   declare @OldDepartanetId int, @NewDepartamentId int
+   declare @OldManageId int, @NewManagerId int
+   declare @OldFirstName nvarchar(20), @NewFirstName nvarchar(20)
+   declare @OldMiddelName nvarchar(20), @NewMiddelName nvarchar(20)
+   declare @OldLastName nvarchar(20), @NewLastName nvarchar(20)
+   declare @OldEmil nvarchar(50), @NewEmail nvarchar(50)
+
+   --muutuja, kuhu läheb lõpptekst 
+   declare @AuditsString nvarchar(20)
+
+   --laeb kõik uuendatud andmed temp tabeli alla 
+   select * from #TempTable
+   from inserted 
+
+   --kõik läbi kõik andemd temp tabelis 
+   while(exists(select Id from #TempTable))
+   begin 
+       set @AudiString = ''
+       --Selekteerib esimese rea andmeid temp table-st
+       select top 1 @Id = Id, 
+       @NewGender = Gender,
+       @NewSalary = Salary, 
+       @NewDepartamentId = DepartamentId,
+       @NewManagerId = ManagerId, 
+       NewFirstName = FirstName,
+       @NewMiddleName = MiddleName, 
+       @NewLastName = LastName,
+       @NewEmail = Email
+       from #TempTable
+       --võtab vanad andmed kustutatud tabelis
+select @OldenGender = Gender 
+       @OldGender = Gender,
+       @OldSalary = Salary, 
+       @OldDepartamentId = DepartamentId,
+       @OldManagerId = ManagerId, 
+       @OldFirstName = FirstName,
+       @OldMiddleName = MiddleName, 
+       @OldLastName = LastName,
+       @OldEmail = Email
+       fromdeleted where Id = @Id 
+
+		  --Tund nr 14  30.04.2026--
+------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
