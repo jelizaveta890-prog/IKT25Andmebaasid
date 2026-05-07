@@ -1582,7 +1582,7 @@ insert into ProductSales  (Id, QuantitySold)
  (2, 12),
  (1, 14)
 
- --loomeview, mis annab meile veerud TotalSales ja TotalTransction
+ --loome view, mis annab meile veerud TotalSales ja TotalTransction
 
  alter view vTotalSalesByProduct
  with schemabinding
