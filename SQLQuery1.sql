@@ -2643,29 +2643,104 @@ end
 select * from Product 
 
 
+          --Tund nr 18  28.05.2026--
+------------------------------------------------
+
+--vastab rea seadistuse e suleb cursori
+close ProductIdCursor
+--vabastab ressursid, mis on seotud cursoriga 
+deallocate ProductIdCursor
+--cursori käskluse lõpp
+
+--vaatame, kas read on uuendatud 
+select Name, UnitPrice
+from Product join
+ProductSales on Product.Id = ProductSales.ProductId
+where(Name = 'Product - 55' or Name = 'Product - 65' or Name = 'Product - 1000')
+
+--asendame cursori JOINI-ga 
+update ProductSales 
+set UnitPrice =
+  case 
+   when Name = 'Product - 55' then 155
+   when Name = 'Product - 65' then 165
+   --võib kasutada like või =
+   when Name like 'Product - 1000' then 10001
+ end
+from ProductSales
+join Product
+on Product.Id = ProductSales.ProductId 
+where Name = 'Product - 55' or Name = 'Product - 65' or Name like 'Product - 1000'
+
+
+--Vaatame tulemust 
+select Name, UnitPrice
+from Product join
+ProductSales on Product.Id = ProductSales.ProductId
+where(Name = 'Product - 55' or Name = 'Product - 65' or Name = 'Product - 1000')
 
 
 
+---tabeli info
+---nimekiri süsteeemi objektidest 
+select * from sysobjects where xtype = 'S'
+
+-- tabelite nimekiri 
+select * from sys.tables
+-- nimekiri tabelitest ja view-st
+select * from INFORMATION_SCHEMA.TABLES
+
+--kui soovid erinevad  objektitüüpe vaadata, siis kasuta XTYPE süntaksit
+select distinct XTYPE from sysobjects
+
+-- IT - internal table
+-- P - stored procedure
+-- PK - primary key constraint
+-- S - system table
+-- SQ - service queue
+-- U - user table
+-- V - view
 
 
+--- annab teada, kas sellise nimega tabel on olemas 
+if not exists (select * from INFORMATION_SCHEMA.TABLES where TABLE_NAME = 'Employee')
+begin
+   create table Employee
+   (
+    id int primary key,
+    Name nvarchar(30),
+    ManagerId int 
+   )
+    print 'Table has been created'
+end 
+else
+begin
+    print 'Table already exsts'
+end
 
+--- saab kasutada ka sisseehitatud funktsiooni: OBJECT_ID()
+if OBJECT_ID('Employee') is null
+begin
+    print 'Table created'
+end 
+else
+begin
+    print 'Table already exsts'
+end
+ 
 
+ -- tahame sama tabeli ära kustutada ja siis uuesti luua 
+ if OBJECT_ID('Employee') is not null
+begin
+    drop table Employee
+end 
+create table Employee
+(
+   Id int primary key,
+    Name nvarchar(30),
+    ManagerId int 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+)
 
 
 
