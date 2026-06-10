@@ -2957,7 +2957,24 @@ set ItemsInStock = @ItemsInStock where Id = 1
 print @ItemsInStock
 commit transaction
 
+--- samal ajal panen teise transactioni tööle
 
+set tran isolation level repeatable read
+begin tran 
+declare @ItemsInStock int
+
+select @ItemsInStock = ItemsInStock
+from dbo.Inventory where Id = 1
+
+waitfor delay '00:00:01'
+set @ItemsInStock = @ItemsInStock - 2
+
+update Inventory
+set ItemsInStock = @ItemsInStock 
+where Id = 1
+
+print @ItemsInStock
+commit tran
 
 
 
